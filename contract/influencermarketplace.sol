@@ -18,6 +18,7 @@ contract influencerMarketplace {
 
     uint internal influencersLength = 0;
     address internal cUsdTokenAddress = 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1;
+    address internal adminAddress = 0xb7BF999D966F287Cd6A1541045999aD5f538D3c6;
 
     struct Influencer {
         address payable owner;
@@ -26,10 +27,18 @@ contract influencerMarketplace {
         string description;
         string email;
         uint price;
+        uint likes;
+        uint dislikes;
         bool payed;
+        bool isVerified;
     }
 
     mapping (uint => Influencer) internal influencers;
+    
+    modifier isAdmin(uint _index) {
+        require(influencers[_index].owner == adminAddress, "Not the owner");
+        _;
+    }
     
     
 // function to add influencers to the cello block - chain
@@ -48,10 +57,23 @@ contract influencerMarketplace {
             _description,
             _email,
             _price,
+            0,
+            0,
+            false,
             false
         );
         
         influencersLength++;
+    }
+    function like(uint _index) public{
+        influencers[_index].likes++;
+    }
+    function dislike(uint _index) public{
+        influencers[_index].dislikes++;
+    }
+    
+    function verifyInfluencer(uint _index)public isAdmin(_index){
+        influencers[_index].isVerified = !influencers[_index].isVerified;
     }
 // function to read the information of the influencer from the cello block - chain
     function readInfluencerinfo(uint _index) public view returns (
@@ -76,14 +98,26 @@ contract influencerMarketplace {
     
     // function to pay an influencer for promotion 
     function payforInfluencer(uint _index) public payable  {
-        require(
+        if(influencers[_index].isVerified == true){
+         require(
+          IERC20Token(cUsdTokenAddress).transferFrom(
+            msg.sender,
+            influencers[_index].owner,
+            influencers[_index].price * 2
+          ),
+          "Transfer failed."
+        );   
+        }else{
+          require(
           IERC20Token(cUsdTokenAddress).transferFrom(
             msg.sender,
             influencers[_index].owner,
             influencers[_index].price
           ),
           "Transfer failed."
-        );
+        );   
+        }
+        
         influencers[_index].payed = true;
     }
     // function to return the length of influencers
